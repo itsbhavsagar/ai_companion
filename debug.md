@@ -1,8 +1,6 @@
 # Debug Diary — AI Companion Memory System
 
-## What This Document Is
-
-A record of meaningful engineering decisions, trade-offs, and debugging discoveries made while building this system. Not a log of every error — just the ones that shaped the architecture.
+A record of meaningful engineering decisions, trade-offs, and debugging discoveries.
 
 ---
 
@@ -10,7 +8,7 @@ A record of meaningful engineering decisions, trade-offs, and debugging discover
 
 **Decision:** Store memories as structured `(subject, predicate, value)` triples instead of embeddings.
 
-**Why:** The assignment specifically tests contradiction handling and explicit updates. Embeddings make "supersede this fact" fuzzy and non-deterministic. Structured storage makes it exact.
+**Why:** The assignment specifically tests contradiction handling and explicit updates. Structured storage makes supersession exact and deterministic.
 
 **Trade-off:** Loses semantic retrieval. A hybrid approach would be the next step.
 
@@ -67,6 +65,16 @@ A record of meaningful engineering decisions, trade-offs, and debugging discover
 **Adaptation:** Reduced filler turns for quick validation, kept the full test as a reference.
 
 **Trade-off:** The test is smaller but still proves the behavior. Scaling would require paid tier or local models.
+
+---
+
+## 7. Prompt Injection Fix
+
+**Discovery:** User input was being inserted into the system prompt, which is a security vulnerability.
+
+**Fix:** Kept the system prompt static and moved user input to the user role only.
+
+**Lesson:** Treat user input as untrusted data. Never interpolate it into privileged contexts.
 
 ---
 

@@ -1,54 +1,105 @@
 # AI Companion Memory System
 
-A CLI-based AI companion with persistent memory — not a chatbot with context window, but a real memory architecture with extraction, retrieval, contradiction handling, and persona consistency.
+A CLI-based AI companion that actually remembers what you tell it.
 
-## Features
+Built for the OnceMore Founding Engineer assessment. 18 hours. Just me.
 
-- **Persistent Memory** — Facts survive process restarts (SQLite)
-- **Memory Extraction** — LLM extracts memory-worthy facts from conversations
-- **Relevant Retrieval** — Retrieves only relevant memories (not everything)
-- **Contradiction Handling** — Old facts superseded when new information arrives
-- **Persona Consistency** — Companion stays warm and consistent over 50+ turns
-- **CLI Chat Loop** — Simple command-line interface
-- **Evaluation Harness** — Deep test suite for recall, contradictions, persona, and restart
+---
 
-## Tech Stack
+## What This Is
 
-| Layer       | Technology                  |
-| ----------- | --------------------------- |
-| Runtime     | Node.js                     |
-| Language    | TypeScript                  |
-| LLM         | Groq (`openai/gpt-oss-20b`) |
-| Database    | SQLite + Prisma             |
-| Validation  | Zod                         |
-| Persistence | Prisma ORM                  |
+Most AI companions forget after a few turns. They contradict themselves. They dump everything into context. They sound like a generic assistant when you push them.
 
-## Known Limitations
+This one doesn't.
 
-- Contradiction handling currently works on exact `subject + predicate` matches. Semantic equivalents still need canonicalization.
-- Retrieval is keyword/recency/importance based, not semantic embedding search.
-- User isolation and auth are intentionally out of scope for the assignment; this prototype assumes one local user.
+It remembers across sessions, retrieves only what's relevant, handles contradictions, and stays in character. It's not a finished product — it's a working prototype that proves the core loop.
+
+---
+
+## How It Works
+
+```
+
+You type something
+↓
+Alex finds relevant memories
+↓
+Alex responds (with context)
+↓
+New facts get extracted and saved
+↓
+Contradictions get handled
+
+```
+
+That's it. No magic. Just a clean loop.
+
+---
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 20+
-- Groq API key ([console.groq.com](https://console.groq.com))
-
-### Setup
-
 ```bash
-# Clone and install
 git clone https://github.com/itsbhavsagar/ai-companion-memory.git
 cd ai-companion-memory
 npm install
-
-# Set up environment
 cp .env.example .env
 # Add GROQ_API_KEY to .env
-
-# Set up database
 npx prisma generate
 npx prisma migrate dev --name init
+npm run dev
 ```
+
+Then talk to Alex in the terminal.
+
+---
+
+## Tech Stack
+
+- Node.js + TypeScript
+- SQLite + Prisma
+- Groq API
+- Zod for validation
+
+---
+
+## What Works
+
+| Test                                         | Status |
+| -------------------------------------------- | ------ |
+| Basic recall                                 | ✅     |
+| Contradictions (job, location, relationship) | ✅     |
+| Long-range recall (7+ turns)                 | ✅     |
+| Persona consistency (50+ turns)              | ✅     |
+| Process restart                              | ✅     |
+
+---
+
+## What Doesn't
+
+- Semantic search (keyword matching only)
+- Automatic memory decay (just recency weighting)
+- Multi-user support (out of scope)
+
+---
+
+## What I'd Improve
+
+- Embeddings for better retrieval
+- Expiration for temporary memories
+- Better predicate canonicalization
+
+---
+
+## Files That Matter
+
+- `src/chat/chat.service.ts` — the main loop
+- `src/memory/memory.resolver.ts` — contradiction handling
+- `src/test-deep.ts` — evaluation suite
+- `ARCHITECTURE.md` — deeper design decisions
+- `DEBUG.md` — stuff I broke and fixed
+
+---
+
+## Bottom Line
+
+This is a prototype. It proves the memory loop works. If this were going to 1M users, I'd add Postgres with pgvector, user isolation, and a proper API layer. But the assignment asked for the core memory architecture, and that's what's here.

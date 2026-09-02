@@ -1,0 +1,37 @@
+import type { Memory } from "@prisma/client";
+import { prisma } from "../db/client.js";
+
+export async function resolveContradictions(
+  subject: string,
+  predicate: string,
+  newValue: string,
+  newMemoryId: string,
+): Promise<void> {
+  const existing: Memory[] = await prisma.memory.findMany({
+    where: {
+      subject,
+      predicate,
+      status: "active",
+    },
+  });
+
+  for (const memory of existing) {
+    if (memory.id === newMemoryId) {
+      continue;
+    }
+
+    if (memory.value.toLowerCase() !== newValue.toLowerCase()) {
+      console.log(
+        `🔄 Superseding memory: ${memory.predicate}: ${memory.value} → ${newValue}`,
+      );
+
+      await prisma.memory.update({
+        where: { id: memory.id },
+        data: {
+          status: "superseded",
+          supersededBy: newMemoryId,
+        },
+      });
+    }
+  }
+}

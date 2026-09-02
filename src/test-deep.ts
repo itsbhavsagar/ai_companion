@@ -7,8 +7,8 @@ import {
   type CreateMemoryInput,
 } from "./memory/memory.service.js";
 
-// Clear all memories first (for clean testing)
 async function clearMemories(): Promise<void> {
+  // WARNING: Destructive eval reset; this script assumes an isolated test database.
   await prisma.memory.deleteMany({});
   console.log("🗑️  All memories cleared\n");
 }
@@ -90,7 +90,6 @@ async function generateMetrics(): Promise<void> {
   console.log(`Superseded memories: ${superseded.length}`);
   console.log(`Total contradictions resolved: ${superseded.length}`);
 
-  // Check recall accuracy
   const queries = [
     { query: "What's my name?", expected: "Bhavsagar" },
     { query: "Where do I live?", expected: "Mumbai" },
@@ -107,7 +106,6 @@ async function generateMetrics(): Promise<void> {
 
   console.log(`\nRecall accuracy: ${recallPassed}/${queries.length} passed`);
 
-  // Check preference contradiction
   const hikingMemory = allMemories.find(
     (m) => m.predicate === "likes" && m.value === "hiking",
   );
@@ -140,8 +138,6 @@ async function generateMetrics(): Promise<void> {
 
 async function testPersonaConsistencyLong(): Promise<void> {
   console.log("\n📝 TEST 6: Persona Consistency (50+ turns)\n");
-
-  // Establish Alex's personality early (Turn 1-3)
   console.log("Establishing Alex's personality...");
   const personaEstablishment = [
     "What kind of conversations do you enjoy?",
@@ -155,7 +151,6 @@ async function testPersonaConsistencyLong(): Promise<void> {
     console.log(`🤖 Alex: ${response}\n`);
   }
 
-  // Filler turns (Turn 4-50)
   console.log("Running 47 filler turns...");
   const fillerMessages = [
     "Tell me a joke",
@@ -170,7 +165,6 @@ async function testPersonaConsistencyLong(): Promise<void> {
     await chat(filler);
   }
 
-  // Test if persona remains consistent (Turn 51-53)
   console.log("\n--- Persona Consistency Check (Turn 51-53) ---");
   const testMessages = [
     "What's your favorite kind of conversation?",
@@ -189,17 +183,14 @@ async function testPersonaConsistencyLong(): Promise<void> {
 async function testRestart(): Promise<void> {
   console.log("\n📝 TEST 7: Process Restart Persistence\n");
 
-  // Show current memories before "restart"
   const beforeMemories = await listActiveMemories();
   console.log(
     "Memories before restart:",
     beforeMemories.map((m) => `${m.predicate}: ${m.value}`),
   );
 
-  // Simulate restart by creating a fresh Prisma connection
   console.log("\n🔄 Simulating process restart (new Prisma connection)...");
 
-  // Test recall after "restart"
   const testMessages = [
     "Do you remember my name?",
     "What city do I live in?",
@@ -213,7 +204,6 @@ async function testRestart(): Promise<void> {
     console.log(`🤖 Alex: ${response}`);
   }
 
-  // Verify memories still exist
   const afterMemories = await listActiveMemories();
   console.log(
     "\nMemories after restart:",
@@ -227,14 +217,10 @@ async function testDeepMemory(): Promise<void> {
   console.log("🧠 DEEP MEMORY TEST\n");
   console.log("=".repeat(50) + "\n");
 
-  // Clear and seed
   await clearMemories();
   await seedInitialMemories();
   await showMemories("Initial Memories");
 
-  // ============================================
-  // TEST 1: Basic Recall
-  // ============================================
   console.log("📝 TEST 1: Basic Recall\n");
 
   const test1Messages = [
@@ -252,9 +238,6 @@ async function testDeepMemory(): Promise<void> {
 
   await showMemories("After Test 1");
 
-  // ============================================
-  // TEST 2: Contradiction Handling
-  // ============================================
   console.log("📝 TEST 2: Contradiction Handling\n");
 
   const test2Messages = [
@@ -272,9 +255,6 @@ async function testDeepMemory(): Promise<void> {
 
   await showMemories("After Test 2 (Contradictions)");
 
-  // ============================================
-  // TEST 3: Long-Range Recall (After 5+ Turns)
-  // ============================================
   console.log("📝 TEST 3: Long-Range Recall\n");
 
   const test3Messages = [
@@ -295,9 +275,6 @@ async function testDeepMemory(): Promise<void> {
 
   await showMemories("After Test 3 (Long-Range Recall)");
 
-  // ============================================
-  // TEST 4: Cross-Topic Retrieval
-  // ============================================
   console.log("📝 TEST 4: Cross-Topic Retrieval\n");
 
   const test4Messages = [
@@ -313,9 +290,6 @@ async function testDeepMemory(): Promise<void> {
     console.log(`🤖 Alex: ${response}\n`);
   }
 
-  // ============================================
-  // TEST 5: Persona Consistency Check
-  // ============================================
   console.log("📝 TEST 5: Persona Consistency\n");
   console.log("Checking if Alex sounds like a generic assistant...\n");
 
@@ -332,19 +306,10 @@ async function testDeepMemory(): Promise<void> {
     console.log(`🤖 Alex: ${response}\n`);
   }
 
-  // ============================================
-  // TEST 6: Persona Consistency (50+ turns)
-  // ============================================
   await testPersonaConsistencyLong();
 
-  // ============================================
-  // TEST 7: Persistence Across Restarts
-  // ============================================
   await testRestart();
 
-  // ============================================
-  // FINAL SUMMARY & METRICS
-  // ============================================
   console.log("=".repeat(50));
   console.log("\n📊 FINAL MEMORY SUMMARY\n");
 
@@ -360,5 +325,4 @@ async function testDeepMemory(): Promise<void> {
   console.log("\n✅ Deep memory test complete!");
 }
 
-// Run the test
 testDeepMemory().catch(console.error);

@@ -7,13 +7,11 @@ import { createMemory } from "../memory/memory.service.js";
 import { getPersona } from "../persona/companion.js";
 
 export async function chat(userMessage: string): Promise<string> {
-  // 1. Retrieve relevant memories
   const memories = await retrieveRelevantMemories(userMessage, 5);
   const memoryContext: string = memories
     .map((memory) => `- ${memory.predicate}: ${memory.value}`)
     .join("\n");
 
-  // 2. Build prompt with persona + memories
   const persona = getPersona();
   const systemPrompt: string = `
 ${persona}
@@ -33,7 +31,6 @@ ${memoryContext || "No specific memories yet."}
 
 Respond naturally, like a friend. Follow the memory usage rules above. Be warm and conversational, but don't force memories into every response.`;
 
-  // 3. Call LLM
   const response = await groq.chat.completions.create({
     model: CHAT_MODEL,
     messages: [
@@ -46,10 +43,8 @@ Respond naturally, like a friend. Follow the memory usage rules above. Be warm a
   const reply: string =
     response.choices[0]?.message?.content || "I'm not sure how to respond.";
 
-  // 4. Extract new memories from user message
   const newMemories = await extractMemories(userMessage);
 
-  // 5. For each new memory: save it first, then supersede any conflicts
   for (const memory of newMemories) {
     const createdMemory = await createMemory(memory);
     await resolveContradictions(

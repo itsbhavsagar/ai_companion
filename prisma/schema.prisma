@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Memory {
+  id             String   @id @default(cuid())
+  subject        String
+  predicate      String
+  value          String
+  category       String
+  importance     Int
+  memoryType     String
+  status         String
+  supersededBy   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastAccessedAt DateTime @default(now())
+  embedding      String?
+
+  @@index([status])
+  @@index([subject])
+  @@index([category])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+}

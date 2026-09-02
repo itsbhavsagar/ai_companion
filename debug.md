@@ -1,128 +1,114 @@
 # Debug Diary — AI Companion Memory System
 
-A record of meaningful engineering decisions, trade-offs, and debugging discoveries.
+Things I tried, things that broke, and how I fixed them.
 
 ---
 
 ## 1. Structured Memory Over Embeddings
 
-**Decision:** Store memories as structured `(subject, predicate, value)` triples instead of embeddings.
+**What I did:** Stored memories as `(subject, predicate, value)` triples instead of embeddings.
 
-**Why:** The assignment specifically tests contradiction handling and explicit updates. Structured storage makes supersession exact and deterministic.
+**Why:** The assignment tests contradiction handling. Structured storage makes supersession exact.
 
-**Trade-off:** Loses semantic retrieval. A hybrid approach would be the next step.
-
----
-
-## 2. Contradiction by Predicate Equality
-
-**Discovery:** The resolver worked perfectly for `job_title`, `location`, and `relationship_status`, but failed for `likes` vs `activity_preference`.
-
-**Root Cause:** Semantic equivalence requires canonicalization. `likes: hiking` and `activity_preference: swimming` are semantically the same type of fact but different predicates.
-
-**Initial Fix:** Canonicalized all activity preferences to `activity_preference` in the extraction prompt.
-
-**Second Discovery:** The eval still exposed an active `likes: hiking` memory after the user said they preferred swimming. Prompt-level canonicalization was not enough because seeded or legacy memories could still enter storage with alias predicates.
-
-**Final Fix:** Moved predicate canonicalization into the domain layer, normalized predicates before storage, normalized LLM-extracted memories after validation, and made the resolver search equivalent predicate aliases. The eval now treats preference contradiction as a hard failure instead of a warning.
-
-**Lesson:** Contradiction detection is as much about schema design as it is about logic.
+**What I lost:** Semantic retrieval. A hybrid would be the next step.
 
 ---
 
-## 3. Retrieval Relevance vs. Retrieval Injection
+## 2. Contradiction Broke for "likes" vs "prefers"
 
-**Discovery:** The retriever was returning relevant memories, but the LLM was over-using them — injecting "Senior Engineer in Mumbai" into joke responses.
+**What happened:** The resolver handled `job_title`, `location`, and `relationship_status` fine. But when the user said "I prefer swimming", `likes: hiking` stayed active.
 
-**Root Cause:** The prompt said "Use memories to personalize," which the model interpreted as "mention them whenever possible."
+**Why:** `likes` and `activity_preference` are different predicates. The resolver couldn't see they're the same type of fact.
 
-**Fix:** Changed to "Use memories ONLY when directly relevant."
+**How I fixed it:** Moved predicate canonicalization into the domain layer. Now `likes`, `prefers`, `enjoys` all map to `activity_preference`.
 
-**Trade-off:** Reduces warmth in some responses but keeps the companion from sounding robotic and over-familiar.
-
----
-
-## 4. 50+ Turn Persona Consistency
-
-**Discovery:** The persona was consistent in short conversations, but I had no evidence for 50+ turns — a requirement in the assignment.
-
-**Fix:** Built a test that establishes persona early, runs 47 filler turns, then checks consistency. The persona held.
-
-**Lesson:** If you claim a property, test it explicitly. Architecture alone isn't evidence.
+**What I learned:** Contradiction detection is as much about schema design as it is about logic.
 
 ---
 
-## 5. Persistence Without Explicit Proof
+## 3. Alex Was Overusing Memories
 
-**Discovery:** The system used SQLite and Prisma, so persistence was "architecturally true." But I hadn't demonstrated it.
+**What happened:** The LLM injected "Senior Engineer in Mumbai" into joke responses.
 
-**Fix:** Added a restart test that simulates a process restart and verifies memory survival.
+**Why:** The prompt said "Use memories to personalize," which the model interpreted as "mention them whenever possible."
 
-**Lesson:** "It works in theory" is not the same as "here's the proof."
+**How I fixed it:** Changed to "Use memories ONLY when directly relevant."
 
----
-
-## 6. Rate Limits as a Design Constraint
-
-**Discovery:** The deep test (47 filler turns) hit Groq's free tier rate limits.
-
-**Adaptation:** Reduced filler turns for quick validation, kept the full test as a reference.
-
-**Trade-off:** The test is smaller but still proves the behavior. Scaling would require paid tier or local models.
+**Trade-off:** Less warmth in some responses, but less robotic tone overall.
 
 ---
 
-## 7. Prompt Injection Fix
+## 4. No Evidence for 50+ Turn Persona
 
-**Discovery:** User input was being inserted into the system prompt, which is a security vulnerability.
+**What happened:** The persona worked in short conversations, but I couldn't prove it lasted 50+ turns.
 
-**Fix:** Kept the system prompt static and moved user input to the user role only.
+**How I fixed it:** Added a test that establishes persona early, runs 47 filler turns, then checks consistency.
 
-**Lesson:** Treat user input as untrusted data. Never interpolate it into privileged contexts.
-
----
-
-## 8. Eval Should Fail Loudly
-
-**Discovery:** The deep eval printed `Hiking still active (needs canonicalization)` but still ended with `Deep memory test complete`. That made the run look healthier than it really was.
-
-**Fix:** Added hard assertions for recall accuracy and preference contradiction. If the system keeps `hiking` active after the user switches to `swimming`, the eval throws instead of quietly passing.
-
-**Lesson:** A demo script is useful, but a serious eval needs failure conditions. If a core behavior breaks, the script should make that impossible to miss.
+**What I learned:** If you claim a property, test it.
 
 ---
 
-## 9. LLM Output Is Not Automatically JSON
+## 5. Persistence Was "Architecturally True" But Not Proven
 
-**Discovery:** The promotion test failed because the extractor expected raw JSON, but the model returned fenced markdown like ````json`. `JSON.parse` rejected it, so `job_title` stayed `Software Engineer` instead of updating to `Senior Engineer`.
+**What happened:** SQLite + Prisma meant persistence should work. But I hadn't demonstrated it.
 
-**Fix:** Enabled Groq JSON mode for extraction, tightened the prompt to request only JSON, and added a defensive parser that can recover a JSON object from fenced output if the model still wraps it.
+**How I fixed it:** Added a restart test that actually simulates a process restart.
 
-**Lesson:** Asking for JSON is not the same as enforcing JSON. Provider-level JSON mode plus validation is the right baseline, and local parsing should still be defensive.
+**What I learned:** "It works in theory" is not the same as "here's the proof."
 
 ---
 
-## 10. Rate Limits During Eval
+## 6. Rate Limits Hit During Testing
 
-**Discovery:** The 50+ turn persona eval can hit Groq's token-per-minute limit during repeated extraction calls.
+**What happened:** 47 filler turns hit Groq's free tier limit.
 
-**Fix:** Increased the Groq client's retry budget so short-lived 429s are retried instead of immediately leaking into the eval output.
+**How I adapted:** Reduced filler turns for quick validation, kept the full test as a reference.
 
-**Lesson:** Live LLM evals are useful demos, but deterministic CI should mock model calls or use a paid/local model path.
+**Trade-off:** Smaller test, but still proves the behavior.
+
+---
+
+## 7. User Input Was in the System Prompt
+
+**What happened:** User input was inserted into the system prompt — a security issue.
+
+**How I fixed it:** Kept the system prompt static and moved user input to the user role only.
+
+**What I learned:** Never interpolate user input into privileged contexts.
+
+---
+
+## 8. Eval Was Passing When It Should Have Failed
+
+**What happened:** The deep eval printed `Hiking still active` but still ended with `Deep memory test complete`.
+
+**How I fixed it:** Added hard assertions. If a core behavior breaks, the eval throws instead of quietly passing.
+
+**What I learned:** A demo script is useful. A serious eval needs failure conditions.
+
+---
+
+## 9. JSON Parsing Broke on Fenced Output
+
+**What happened:** The model returned ````json` blocks. `JSON.parse` rejected it.
+
+**How I fixed it:** Enabled Groq JSON mode, tightened the prompt, and added a defensive parser.
+
+**What I learned:** Asking for JSON is not the same as enforcing JSON.
 
 ---
 
 ## What I'd Do Differently
 
 - Canonicalize predicates at the domain boundary from the start.
-- Add the restart test earlier — it's a small change with high impact on the narrative.
-- Build the persona test earlier — the 50+ turn requirement was obvious in the spec.
+- Add the restart test earlier.
+- Build the persona test earlier.
 
 ---
 
-## What I'm Proud Of
+## What Worked
 
-- The resolver handles exact contradictions and common predicate aliases cleanly.
+- The resolver handles contradictions cleanly.
 - The test suite covers recall, contradictions, persona, and restart.
 - The system is simple enough to explain in 5 minutes.
 

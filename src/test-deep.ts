@@ -1,7 +1,11 @@
 import "dotenv/config";
 import { chat } from "./chat/chat.service.js";
 import { prisma } from "./db/client.js";
-import { createMemory, listActiveMemories } from "./memory/memory.service.js";
+import {
+  createMemory,
+  listActiveMemories,
+  type CreateMemoryInput,
+} from "./memory/memory.service.js";
 
 // Clear all memories first (for clean testing)
 async function clearMemories(): Promise<void> {
@@ -12,7 +16,7 @@ async function clearMemories(): Promise<void> {
 async function seedInitialMemories(): Promise<void> {
   console.log("🌱 Seeding initial memories...");
 
-  const initialFacts = [
+  const initialFacts: CreateMemoryInput[] = [
     {
       subject: "user",
       predicate: "name",

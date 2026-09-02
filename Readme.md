@@ -2,8 +2,6 @@
 
 A CLI-based AI companion that actually remembers what you tell it.
 
-Built for the OnceMore Founding Engineer assessment. 18 hours. Just me.
-
 ---
 
 ## What This Is

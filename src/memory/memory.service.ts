@@ -1,5 +1,8 @@
 import type { Memory } from "@prisma/client";
-import type { CreateMemoryInput } from "../domain/memory.js";
+import {
+  canonicalizePredicate,
+  type CreateMemoryInput,
+} from "../domain/memory.js";
 import { prisma } from "../db/client.js";
 
 export type {
@@ -16,6 +19,7 @@ export async function createMemory(data: CreateMemoryInput): Promise<Memory> {
   return prisma.memory.create({
     data: {
       ...data,
+      predicate: canonicalizePredicate(data.predicate),
       status: "active",
     },
   });
@@ -38,9 +42,16 @@ export async function updateMemory(
   id: string,
   data: UpdateMemoryInput,
 ): Promise<Memory> {
+  const updateData: UpdateMemoryInput = data.predicate
+    ? {
+        ...data,
+        predicate: canonicalizePredicate(data.predicate),
+      }
+    : data;
+
   return prisma.memory.update({
     where: { id },
-    data,
+    data: updateData,
   });
 }
 

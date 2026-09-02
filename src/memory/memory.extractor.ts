@@ -1,13 +1,33 @@
 import { z } from "zod";
 import { groq } from "../ai/groq.js";
 import { EXTRACTION_MODEL, TEMPERATURE } from "../config/models.js";
-import { MemorySchema, type ExtractedMemory } from "../domain/memory.js";
+import {
+  canonicalizePredicate,
+  MemorySchema,
+  type ExtractedMemory,
+} from "../domain/memory.js";
 
 export type { ExtractedMemory } from "../domain/memory.js";
 
 const ExtractionResponseSchema = z.object({
   memories: z.array(MemorySchema).default([]),
 });
+
+function extractJsonObject(content: string): unknown {
+  const withoutFence = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  const start = withoutFence.indexOf("{");
+  const end = withoutFence.lastIndexOf("}");
+
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error("No JSON object found in extraction response");
+  }
+
+  return JSON.parse(withoutFence.slice(start, end + 1)) as unknown;
+}
 
 const EXTRACTION_PROMPT = `You are a memory extraction system. Given a user message, extract ANY personal facts that are worth remembering.
 
@@ -33,7 +53,7 @@ const EXTRACTION_PROMPT = `You are a memory extraction system. Given a user mess
 User: "I like hiking" → { "predicate": "activity_preference", "value": "hiking" }
 User: "I prefer swimming" → { "predicate": "activity_preference", "value": "swimming" }
 
-Return a JSON object with a "memories" array:
+Return only a valid JSON object with a "memories" array. Do not wrap it in markdown fences:
 {
   "memories": [
     {
@@ -64,6 +84,7 @@ export async function extractMemories(
         { role: "system", content: EXTRACTION_PROMPT },
         { role: "user", content: userMessage },
       ],
+      response_format: { type: "json_object" },
       temperature: TEMPERATURE.EXTRACTION,
     });
 
@@ -73,14 +94,17 @@ export async function extractMemories(
       return [];
     }
 
-    const parsedJson: unknown = JSON.parse(content);
+    const parsedJson = extractJsonObject(content);
     const parsed = ExtractionResponseSchema.safeParse(parsedJson);
 
     if (!parsed.success) {
       return [];
     }
 
-    return parsed.data.memories;
+    return parsed.data.memories.map((memory) => ({
+      ...memory,
+      predicate: canonicalizePredicate(memory.predicate),
+    }));
   } catch (error: unknown) {
     console.error("Memory extraction failed:", error);
     return [];

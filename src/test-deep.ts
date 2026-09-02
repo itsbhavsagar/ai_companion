@@ -1,3 +1,4 @@
+import type { Memory } from "@prisma/client";
 import "dotenv/config";
 import { chat } from "./chat/chat.service.js";
 import { prisma } from "./db/client.js";
@@ -6,6 +7,24 @@ import {
   listActiveMemories,
   type CreateMemoryInput,
 } from "./memory/memory.service.js";
+
+function assertEval(condition: boolean, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function findMemory(
+  memories: Memory[],
+  predicate: string,
+  value: string,
+): Memory | undefined {
+  return memories.find(
+    (memory) =>
+      memory.predicate === predicate &&
+      memory.value.toLowerCase() === value.toLowerCase(),
+  );
+}
 
 async function clearMemories(): Promise<void> {
   // WARNING: Destructive eval reset; this script assumes an isolated test database.
@@ -35,7 +54,7 @@ async function seedInitialMemories(): Promise<void> {
     },
     {
       subject: "user",
-      predicate: "likes",
+      predicate: "activity_preference",
       value: "hiking",
       category: "personal",
       importance: 6,
@@ -94,6 +113,7 @@ async function generateMetrics(): Promise<void> {
     { query: "What's my name?", expected: "Bhavsagar" },
     { query: "Where do I live?", expected: "Mumbai" },
     { query: "What's my job?", expected: "Senior Engineer" },
+    { query: "What did I say I like to do now?", expected: "swimming" },
   ];
 
   let recallPassed = 0;
@@ -105,28 +125,32 @@ async function generateMetrics(): Promise<void> {
   }
 
   console.log(`\nRecall accuracy: ${recallPassed}/${queries.length} passed`);
-
-  const hikingMemory = allMemories.find(
-    (m) => m.predicate === "likes" && m.value === "hiking",
+  assertEval(
+    recallPassed === queries.length,
+    `Recall accuracy failed: ${recallPassed}/${queries.length} passed`,
   );
-  const swimmingMemory = allMemories.find(
-    (m) => m.predicate === "activity_preference" && m.value === "swimming",
+
+  const hikingMemory = findMemory(allMemories, "activity_preference", "hiking");
+  const swimmingMemory = findMemory(
+    allMemories,
+    "activity_preference",
+    "swimming",
   );
 
   console.log("\nPreference Contradiction Check:");
-  if (swimmingMemory && swimmingMemory.status === "active") {
-    console.log("  ✅ Swimming is active (correct)");
-  } else {
+  if (!swimmingMemory || swimmingMemory.status !== "active") {
     console.log("  ❌ Swimming not found or not active");
+    throw new Error("Preference contradiction failed: swimming is not active");
   }
 
-  if (hikingMemory && hikingMemory.status === "superseded") {
-    console.log("  ✅ Hiking is superseded (correct)");
-  } else if (hikingMemory && hikingMemory.status === "active") {
-    console.log("  ⚠️ Hiking still active (needs canonicalization)");
-  } else {
-    console.log("  ℹ️ Hiking memory not found");
+  console.log("  ✅ Swimming is active (correct)");
+
+  if (!hikingMemory || hikingMemory.status !== "superseded") {
+    console.log("  ❌ Hiking was not superseded");
+    throw new Error("Preference contradiction failed: hiking is still active");
   }
+
+  console.log("  ✅ Hiking is superseded (correct)");
 
   console.log(
     `\nContradiction handling: ${superseded.length} memories superseded`,

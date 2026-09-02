@@ -20,7 +20,11 @@ A record of meaningful engineering decisions, trade-offs, and debugging discover
 
 **Root Cause:** Semantic equivalence requires canonicalization. `likes: hiking` and `activity_preference: swimming` are semantically the same type of fact but different predicates.
 
-**Fix:** Canonicalized all activity preferences to `activity_preference` in the extraction prompt.
+**Initial Fix:** Canonicalized all activity preferences to `activity_preference` in the extraction prompt.
+
+**Second Discovery:** The eval still exposed an active `likes: hiking` memory after the user said they preferred swimming. Prompt-level canonicalization was not enough because seeded or legacy memories could still enter storage with alias predicates.
+
+**Final Fix:** Moved predicate canonicalization into the domain layer, normalized predicates before storage, normalized LLM-extracted memories after validation, and made the resolver search equivalent predicate aliases. The eval now treats preference contradiction as a hard failure instead of a warning.
 
 **Lesson:** Contradiction detection is as much about schema design as it is about logic.
 
@@ -78,9 +82,39 @@ A record of meaningful engineering decisions, trade-offs, and debugging discover
 
 ---
 
+## 8. Eval Should Fail Loudly
+
+**Discovery:** The deep eval printed `Hiking still active (needs canonicalization)` but still ended with `Deep memory test complete`. That made the run look healthier than it really was.
+
+**Fix:** Added hard assertions for recall accuracy and preference contradiction. If the system keeps `hiking` active after the user switches to `swimming`, the eval throws instead of quietly passing.
+
+**Lesson:** A demo script is useful, but a serious eval needs failure conditions. If a core behavior breaks, the script should make that impossible to miss.
+
+---
+
+## 9. LLM Output Is Not Automatically JSON
+
+**Discovery:** The promotion test failed because the extractor expected raw JSON, but the model returned fenced markdown like ````json`. `JSON.parse` rejected it, so `job_title` stayed `Software Engineer` instead of updating to `Senior Engineer`.
+
+**Fix:** Enabled Groq JSON mode for extraction, tightened the prompt to request only JSON, and added a defensive parser that can recover a JSON object from fenced output if the model still wraps it.
+
+**Lesson:** Asking for JSON is not the same as enforcing JSON. Provider-level JSON mode plus validation is the right baseline, and local parsing should still be defensive.
+
+---
+
+## 10. Rate Limits During Eval
+
+**Discovery:** The 50+ turn persona eval can hit Groq's token-per-minute limit during repeated extraction calls.
+
+**Fix:** Increased the Groq client's retry budget so short-lived 429s are retried instead of immediately leaking into the eval output.
+
+**Lesson:** Live LLM evals are useful demos, but deterministic CI should mock model calls or use a paid/local model path.
+
+---
+
 ## What I'd Do Differently
 
-- Canonicalize predicates earlier — would have caught the `likes` vs `activity_preference` issue sooner.
+- Canonicalize predicates at the domain boundary from the start.
 - Add the restart test earlier — it's a small change with high impact on the narrative.
 - Build the persona test earlier — the 50+ turn requirement was obvious in the spec.
 
@@ -88,7 +122,7 @@ A record of meaningful engineering decisions, trade-offs, and debugging discover
 
 ## What I'm Proud Of
 
-- The resolver handles three contradiction categories cleanly.
+- The resolver handles exact contradictions and common predicate aliases cleanly.
 - The test suite covers recall, contradictions, persona, and restart.
 - The system is simple enough to explain in 5 minutes.
 

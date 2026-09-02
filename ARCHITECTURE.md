@@ -84,7 +84,7 @@ Invalid or malformed extraction output is ignored instead of poisoning the memor
 
 ### `src/memory/memory.resolver.ts`
 
-Handles contradictions by finding active memories with the same `subject + predicate`. When the new value differs, the old memory is marked `superseded` and points at the new memory through `supersededBy`.
+Handles contradictions by finding active memories with the same `subject + canonical predicate`. When the new value differs, the old memory is marked `superseded` and points at the new memory through `supersededBy`.
 
 This keeps history instead of destructively overwriting old facts.
 
@@ -162,8 +162,9 @@ User message
   -> LLM extraction
   -> JSON parse
   -> Zod validation
+  -> predicate canonicalization
   -> create active memory
-  -> find active memories with same subject + predicate
+  -> find active memories with same subject + canonical predicate
   -> supersede older conflicting values
 ```
 
@@ -189,6 +190,7 @@ The deep evaluation script covers:
 - Job contradiction
 - Location contradiction
 - Relationship contradiction
+- Preference contradiction
 - Long-range recall after unrelated turns
 - Persona consistency over 50+ turns
 - Process restart persistence
@@ -197,11 +199,11 @@ The current evaluation is intentionally lightweight and demo-friendly. It proves
 
 ## Known Limitations
 
-### Predicate Canonicalization
+### Semantic Contradiction Detection
 
-Contradiction handling depends on exact `subject + predicate` matches. If equivalent facts use different predicates, the resolver may not know they conflict.
+The system canonicalizes common predicate aliases like `likes`, `prefers`, `hobby`, and `interest` into `activity_preference`.
 
-Example: `likes: hiking` and `activity_preference: swimming` are semantically related, but only conflict if canonicalized to the same predicate family.
+Deeper semantic contradiction detection is still future work. The resolver handles known predicate families, but it does not yet reason about every possible natural-language paraphrase or temporal nuance.
 
 ### Retrieval
 
@@ -236,7 +238,7 @@ That keeps memory inspectable while making retrieval smarter.
 ## Next Improvements
 
 - Add embeddings for semantic retrieval
-- Add predicate aliases and canonicalization rules
+- Expand predicate cardinality and temporal rules
 - Add automatic expiration for temporary memories
 - Add transaction boundaries around memory creation and supersession
 - Add user-scoped memory for multi-user support

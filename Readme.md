@@ -65,7 +65,7 @@ Then talk to Alex in the terminal.
 | Test                                         | Status |
 | -------------------------------------------- | ------ |
 | Basic recall                                 | ✅     |
-| Contradictions (job, location, relationship) | ✅     |
+| Contradictions (job, location, relationship, preference) | ✅     |
 | Long-range recall (7+ turns)                 | ✅     |
 | Persona consistency (50+ turns)              | ✅     |
 | Process restart                              | ✅     |
@@ -84,7 +84,7 @@ Then talk to Alex in the terminal.
 
 - Embeddings for better retrieval
 - Expiration for temporary memories
-- Better predicate canonicalization
+- Broader semantic contradiction detection and cardinality rules
 
 ---
 

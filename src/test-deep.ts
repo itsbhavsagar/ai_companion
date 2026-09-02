@@ -79,6 +79,9 @@ async function generateMetrics(): Promise<void> {
   console.log("\n📊 EVALUATION METRICS\n");
 
   const memories = await listActiveMemories();
+  const allMemories = await prisma.memory.findMany({
+    orderBy: { createdAt: "desc" },
+  });
   const superseded = await prisma.memory.findMany({
     where: { status: "superseded" },
   });
@@ -105,10 +108,10 @@ async function generateMetrics(): Promise<void> {
   console.log(`\nRecall accuracy: ${recallPassed}/${queries.length} passed`);
 
   // Check preference contradiction
-  const hikingMemory = memories.find(
+  const hikingMemory = allMemories.find(
     (m) => m.predicate === "likes" && m.value === "hiking",
   );
-  const swimmingMemory = memories.find(
+  const swimmingMemory = allMemories.find(
     (m) => m.predicate === "activity_preference" && m.value === "swimming",
   );
 

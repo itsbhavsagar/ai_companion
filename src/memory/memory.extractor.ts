@@ -1,29 +1,13 @@
-import { Groq } from "groq-sdk";
 import { z } from "zod";
-import { LLM_MODEL, TEMPERATURE } from "../config/models.js";
+import { groq } from "../ai/groq.js";
+import { EXTRACTION_MODEL, TEMPERATURE } from "../config/models.js";
+import { MemorySchema, type ExtractedMemory } from "../domain/memory.js";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+export type { ExtractedMemory } from "../domain/memory.js";
+
+const ExtractionResponseSchema = z.object({
+  memories: z.array(MemorySchema).default([]),
 });
-
-const MemorySchema = z.object({
-  subject: z.string(),
-  predicate: z.string(),
-  value: z.string(),
-  category: z.enum(["work", "relationship", "personal", "opinion", "plan"]),
-  importance: z.number().min(1).max(10),
-  memoryType: z.enum(["stable", "temporary"]),
-});
-
-export type ExtractedMemory = z.infer<typeof MemorySchema>;
-
-export interface ExtractionResponse {
-  memories: unknown[];
-}
-
-function isExtractedMemory(value: unknown): value is ExtractedMemory {
-  return MemorySchema.safeParse(value).success;
-}
 
 const EXTRACTION_PROMPT = `You are a memory extraction system. Given a user message, extract ANY personal facts that are worth remembering.
 
@@ -75,7 +59,7 @@ export async function extractMemories(
 
   try {
     const response = await groq.chat.completions.create({
-      model: LLM_MODEL,
+      model: EXTRACTION_MODEL,
       messages: [
         { role: "system", content: EXTRACTION_PROMPT },
         { role: "user", content: userMessage },
@@ -89,10 +73,14 @@ export async function extractMemories(
       return [];
     }
 
-    const parsed = JSON.parse(content) as ExtractionResponse;
-    const memories: unknown[] = parsed.memories ?? [];
+    const parsedJson: unknown = JSON.parse(content);
+    const parsed = ExtractionResponseSchema.safeParse(parsedJson);
 
-    return memories.filter(isExtractedMemory);
+    if (!parsed.success) {
+      return [];
+    }
+
+    return parsed.data.memories;
   } catch (error: unknown) {
     console.error("Memory extraction failed:", error);
     return [];

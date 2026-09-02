@@ -23,6 +23,12 @@ A CLI-based AI companion with persistent memory — not a chatbot with context w
 | Validation  | Zod                         |
 | Persistence | Prisma ORM                  |
 
+## Known Limitations
+
+- Contradiction handling currently works on exact `subject + predicate` matches. Semantic equivalents still need canonicalization.
+- Retrieval is keyword/recency/importance based, not semantic embedding search.
+- User isolation and auth are intentionally out of scope for the assignment; this prototype assumes one local user.
+
 ## Quick Start
 
 ### Prerequisites

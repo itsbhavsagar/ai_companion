@@ -1,23 +1,12 @@
 import type { Memory } from "@prisma/client";
+import type { CreateMemoryInput } from "../domain/memory.js";
 import { prisma } from "../db/client.js";
 
-export type MemoryCategory =
-  | "work"
-  | "relationship"
-  | "personal"
-  | "opinion"
-  | "plan";
-
-export type MemoryType = "stable" | "temporary";
-
-export type CreateMemoryInput = {
-  subject: string;
-  predicate: string;
-  value: string;
-  category: MemoryCategory;
-  importance: number;
-  memoryType: MemoryType;
-};
+export type {
+  CreateMemoryInput,
+  MemoryCategory,
+  MemoryType,
+} from "../domain/memory.js";
 
 export type UpdateMemoryInput = Partial<
   Omit<Memory, "id" | "createdAt" | "updatedAt">

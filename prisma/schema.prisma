@@ -27,9 +27,11 @@ model Memory {
   @@index([category])
 }
 
-model Conversation {
-  id        String   @id @default(cuid())
-  role      String
-  content   String
-  createdAt DateTime @default(now())
-}
+// Conversation storage is intentionally out of scope for this prototype.
+// The current chat loop relies on persistent Memory records instead.
+// model Conversation {
+//   id        String   @id @default(cuid())
+//   role      String
+//   content   String
+//   createdAt DateTime @default(now())
+// }

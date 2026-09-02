@@ -33,12 +33,15 @@ const EXTRACTION_PROMPT = `You are a memory extraction system. Given a user mess
 
 ## Canonical Predicates (USE THESE EXACTLY):
 - "name" — user's name
-- "location" — where the user lives
+- "current_location" — where the user lives now
+- "planned_location" — where the user plans to move; store only the destination as the value
+- "past_location" — where the user used to live; store only the location as the value
 - "job_title" — user's job/role
 - "relationship_status" — single, in a relationship, married, etc.
 - "activity_preference" — what the user likes to do (hiking, swimming, reading, etc.)
 - "opinion" — user's views on topics
-- "plan" — future plans or intentions
+- "career_plan" — a planned career goal; store only the role or goal as the value
+- "plan" — other future plans or intentions
 
 ## Critical Rules:
 - Map "likes X" → activity_preference: X
@@ -48,10 +51,19 @@ const EXTRACTION_PROMPT = `You are a memory extraction system. Given a user mess
 - Map "I love X" → activity_preference: X
 - ALWAYS use "activity_preference" for ANY activity-related preference
 - DO NOT use "likes" as a predicate — use "activity_preference" instead
+- Map a planned move to planned_location, never plan
+- Map a planned career goal to career_plan, never plan
+- current_location, planned_location, and past_location are different predicates and must not replace one another
+- planned_location, career_plan, and plan are different predicates and must not replace one another
 
 ## Examples:
 User: "I like hiking" → { "predicate": "activity_preference", "value": "hiking" }
 User: "I prefer swimming" → { "predicate": "activity_preference", "value": "swimming" }
+User: "I live in Delhi" → { "predicate": "current_location", "value": "Delhi" }
+User: "I'm planning to move to Mumbai" → { "predicate": "planned_location", "value": "Mumbai" }
+User: "I used to live in Bengaluru" → { "predicate": "past_location", "value": "Bengaluru" }
+User: "I want to become a pilot" → { "predicate": "career_plan", "value": "pilot" }
+User: "I plan to learn guitar" → { "predicate": "plan", "value": "learn guitar" }
 
 Return only a valid JSON object with a "memories" array. Do not wrap it in markdown fences:
 {

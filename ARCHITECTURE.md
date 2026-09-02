@@ -40,7 +40,8 @@ src/
 |-- ai/
 |   `-- groq.ts
 |-- chat/
-|   `-- chat.service.ts
+|   |-- chat.service.ts
+|   `-- route-query.ts
 |-- config/
 |   `-- models.ts
 |-- db/
@@ -62,7 +63,7 @@ src/
 
 ### `src/chat/chat.service.ts`
 
-The orchestration layer. It retrieves memories, builds the system prompt, calls the chat model, extracts new memories, stores them, and resolves contradictions.
+The orchestration layer. It routes memory questions, retrieves memories, builds the system prompt, calls the chat model, extracts new memories, stores them, and resolves contradictions.
 
 The user message is kept in the user role. It is not embedded into the system prompt. Retrieved memories are included as context, with an explicit instruction that they are user-provided data, not instructions.
 
@@ -85,6 +86,8 @@ Invalid or malformed extraction output is ignored instead of poisoning the memor
 ### `src/memory/memory.resolver.ts`
 
 Handles contradictions by finding active memories with the same `subject + canonical predicate`. When the new value differs, the old memory is marked `superseded` and points at the new memory through `supersededBy`.
+
+Locations use separate `current_location`, `planned_location`, and `past_location` predicates. Plans use separate `career_plan` and `plan` predicates. Unrelated facts coexist while changes within the same type supersede correctly.
 
 This keeps history instead of destructively overwriting old facts.
 
@@ -135,9 +138,10 @@ The Prisma `Memory` model also stores status, supersession links, timestamps, an
 
 ```text
 Input message
+  -> LLM route to a known memory predicate (when applicable)
   -> load active memories
-  -> tokenize query
-  -> score keyword overlap
+  -> prioritize the routed predicate
+  -> score keyword overlap for remaining memories
   -> apply importance weight
   -> apply recency weight
   -> sort by score
@@ -207,7 +211,7 @@ Deeper semantic contradiction detection is still future work. The resolver handl
 
 ### Retrieval
 
-Retrieval is keyword-based, not semantic. It does not use embeddings, vector search, reranking, or query classification.
+Retrieval uses an LLM to route known memory questions to a predicate, then ranks remaining memories with keywords. It does not use embeddings, vector search, or semantic reranking.
 
 ### Decay
 

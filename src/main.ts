@@ -1,82 +1,64 @@
 import "dotenv/config";
+import readline from "node:readline";
 import { chat } from "./chat/chat.service.js";
 import { listActiveMemories } from "./memory/memory.service.js";
 
-async function testChat(): Promise<void> {
-  console.log("\n--- Phase 5: Chat Service ---");
-
+async function showMemories(): Promise<void> {
   const memories = await listActiveMemories();
-  console.log(
-    "Current memories:",
-    memories.map((memory) => `${memory.predicate}: ${memory.value}`),
-  );
-  console.log();
 
-  const messages: string[] = [
-    "I just got promoted to Senior Engineer!",
-    "I'm really excited about it, but also nervous.",
-    "Do you remember what I do for work?",
-  ];
-
-  for (const userMessage of messages) {
-    console.log(`\n👤 User: ${userMessage}`);
-    const response: string = await chat(userMessage);
-    console.log(`🤖 Alex: ${response}`);
-  }
-
-  console.log("\n--- Updated Memories ---");
-  const updatedMemories = await listActiveMemories();
-  console.log(
-    updatedMemories.map((memory) => `${memory.predicate}: ${memory.value}`),
-  );
-}
-
-async function main(): Promise<void> {
-  const existing = await listActiveMemories();
-  if (existing.length === 0) {
-    console.log(
-      "No memories found. Please run Phase 3 first to seed memories.",
-    );
+  if (memories.length === 0) {
+    console.log("\nNo memories yet. Start chatting with Alex!\n");
     return;
   }
 
-  await testChat();
-}
-
-async function testContradiction(): Promise<void> {
-  console.log("\n--- Phase 6: Contradiction Test ---");
-
-  const userMessage = "I'm a Senior Engineer now, actually";
-  console.log(`👤 User: ${userMessage}`);
-
-  const response: string = await chat(userMessage);
-  console.log(`🤖 Alex: ${response}`);
-
-  const memories = await listActiveMemories();
-  console.log(
-    "\nUpdated memories:",
-    memories.map((memory) => `${memory.predicate}: ${memory.value}`),
-  );
-}
-
-async function testPersona(): Promise<void> {
-  console.log("\n--- Phase 7: Persona Consistency Test ---");
-
-  const conversation: string[] = [
-    "Tell me a joke",
-    "What's the weather like?",
-    "I'm feeling a bit down today",
-    "What do you think about AI?",
-  ];
-
-  for (const message of conversation) {
-    console.log(`\n👤 User: ${message}`);
-    const response: string = await chat(message);
-    console.log(`🤖 Alex: ${response}`);
-    console.log("---");
+  console.log("\nAlex remembers:");
+  for (const memory of memories) {
+    console.log(`  - ${memory.predicate}: ${memory.value}`);
   }
+  console.log();
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
+async function startCli(): Promise<void> {
+  console.log("\nAI Companion Memory System\n");
+  console.log("Commands: memories, exit\n");
+
+  await showMemories();
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log("Alex: Hi! I'm your AI companion. What's on your mind?\n");
+
+  rl.on("line", async (input: string) => {
+    const message = input.trim();
+
+    if (!message) {
+      return;
+    }
+
+    if (message.toLowerCase() === "exit") {
+      console.log("Alex: Goodbye! See you next time.");
+      rl.close();
+      return;
+    }
+
+    if (message.toLowerCase() === "memories") {
+      await showMemories();
+      return;
+    }
+
+    try {
+      const response = await chat(message);
+      console.log(`Alex: ${response}\n`);
+    } catch (error: unknown) {
+      console.error("Alex could not respond:", error);
+    }
+  });
+}
+
+startCli().catch((error: unknown) => {
+  console.error("Failed to start CLI:", error);
+  process.exitCode = 1;
 });

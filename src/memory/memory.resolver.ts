@@ -1,18 +1,18 @@
-import type { Memory } from "@prisma/client";
-import { prisma } from "../db/client.js";
+import type { Memory, Prisma } from "@prisma/client";
 import {
   canonicalizePredicate,
   equivalentPredicates,
 } from "../domain/memory.js";
 
 export async function resolveContradictions(
+  tx: Prisma.TransactionClient,
   subject: string,
   predicate: string,
   newValue: string,
   newMemoryId: string,
 ): Promise<void> {
   const canonicalPredicate = canonicalizePredicate(predicate);
-  const existing: Memory[] = await prisma.memory.findMany({
+  const existing: Memory[] = await tx.memory.findMany({
     where: {
       subject,
       predicate: { in: equivalentPredicates(canonicalPredicate) },
@@ -30,7 +30,7 @@ export async function resolveContradictions(
         `🔄 Superseding memory: ${canonicalPredicate}: ${memory.value} → ${newValue}`,
       );
 
-      await prisma.memory.update({
+      await tx.memory.update({
         where: { id: memory.id },
         data: {
           status: "superseded",

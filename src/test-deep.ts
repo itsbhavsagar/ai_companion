@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { Memory } from "@prisma/client";
 import "dotenv/config";
 import { chat } from "./chat/chat.service.js";
@@ -7,6 +9,8 @@ import {
   listActiveMemories,
   type CreateMemoryInput,
 } from "./memory/memory.service.js";
+
+const execFileAsync = promisify(execFile);
 
 function assertEval(condition: boolean, message: string): asserts condition {
   if (!condition) {
@@ -196,12 +200,26 @@ async function testPersonaConsistencyLong(): Promise<void> {
     "What do you enjoy discussing?",
   ];
 
+  const responses: string[] = [];
+
   for (const msg of testMessages) {
     console.log(`\n👤 User: ${msg}`);
     const response = await chat(msg);
     console.log(`🤖 Alex: ${response}`);
+    responses.push(response);
     console.log("---");
   }
+
+  const allResponses = responses.join(" ").toLowerCase();
+  assertEval(
+    allResponses.includes("music") || allResponses.includes("book"),
+    "Persona drifted: Alex stopped mentioning music or books",
+  );
+  assertEval(
+    !allResponses.includes("i am an ai assistant") &&
+      !allResponses.includes("how can i help you"),
+    "Persona flattened to generic assistant voice",
+  );
 }
 
 async function testRestart(): Promise<void> {
@@ -213,25 +231,47 @@ async function testRestart(): Promise<void> {
     beforeMemories.map((m) => `${m.predicate}: ${m.value}`),
   );
 
-  console.log("\n🔄 Simulating process restart (new Prisma connection)...");
+  console.log("\n🔄 Simulating process restart (fresh Node process)...");
 
-  const testMessages = [
-    "Do you remember my name?",
-    "What city do I live in?",
-    "What's my job?",
-    "What do I like to do?",
-  ];
-
-  for (const msg of testMessages) {
-    console.log(`\n👤 User: ${msg}`);
-    const response = await chat(msg);
-    console.log(`🤖 Alex: ${response}`);
-  }
-
-  const afterMemories = await listActiveMemories();
+  const childProgram = `
+    import { PrismaClient } from "@prisma/client";
+    const prisma = new PrismaClient();
+    try {
+      const memories = await prisma.memory.findMany({
+        where: { status: "active" },
+        orderBy: { createdAt: "desc" },
+      });
+      process.stdout.write(JSON.stringify(memories));
+    } finally {
+      await prisma.$disconnect();
+    }
+  `;
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    ["--input-type=module", "--eval", childProgram],
+    { env: process.env },
+  );
+  const afterMemories: Memory[] = JSON.parse(stdout) as Memory[];
   console.log(
     "\nMemories after restart:",
     afterMemories.map((m) => `${m.predicate}: ${m.value}`),
+  );
+
+  assertEval(
+    afterMemories.length === beforeMemories.length,
+    `Memory count mismatch: ${beforeMemories.length} → ${afterMemories.length}`,
+  );
+
+  const beforeValues = beforeMemories
+    .map((memory) => `${memory.predicate}:${memory.value}`)
+    .sort();
+  const afterValues = afterMemories
+    .map((memory) => `${memory.predicate}:${memory.value}`)
+    .sort();
+
+  assertEval(
+    beforeValues.every((value, index) => value === afterValues[index]),
+    "Memory content changed after restart",
   );
 
   console.log("\n✅ Memory persistence verified!");

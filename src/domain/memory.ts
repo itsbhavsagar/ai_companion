@@ -12,24 +12,31 @@ export const MEMORY_TYPES = ["stable", "temporary"] as const;
 
 export const CANONICAL_PREDICATES = [
   "name",
-  "location",
+  "current_location",
+  "planned_location",
+  "past_location",
   "job_title",
   "relationship_status",
   "activity_preference",
   "opinion",
+  "career_plan",
   "plan",
 ] as const;
 
 export type CanonicalPredicate = (typeof CANONICAL_PREDICATES)[number];
 
 const PREDICATE_ALIASES: Record<string, CanonicalPredicate> = {
-  city: "location",
-  current_city: "location",
-  lives_in: "location",
+  city: "current_location",
+  current_city: "current_location",
+  lives_in: "current_location",
+  location: "current_location",
+  moving_plan: "planned_location",
+  relocation_plan: "planned_location",
   job: "job_title",
   role: "job_title",
   title: "job_title",
   relationship: "relationship_status",
+  career_goal: "career_plan",
   activity: "activity_preference",
   activity_preferences: "activity_preference",
   enjoy: "activity_preference",

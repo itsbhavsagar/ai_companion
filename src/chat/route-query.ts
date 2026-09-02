@@ -70,10 +70,63 @@ export async function routeQuery(userMessage: string): Promise<QueryIntent> {
       .replace(/^["'`\s]+|["'`.\s]+$/g, "");
     const parsed = QueryIntentSchema.safeParse(content);
 
-    return parsed.success ? parsed.data : "general";
+    return parsed.success ? parsed.data : inferQueryIntentFallback(userMessage);
   } catch {
-    return "general";
+    return inferQueryIntentFallback(userMessage);
   }
+}
+
+function inferQueryIntentFallback(userMessage: string): QueryIntent {
+  const lowerMessage = userMessage.toLowerCase();
+
+  if (lowerMessage.includes("name") || lowerMessage.includes("call me")) {
+    return "name";
+  }
+
+  if (
+    lowerMessage.includes("job") ||
+    lowerMessage.includes("profession") ||
+    (lowerMessage.includes("what do i do") && !lowerMessage.includes("plan"))
+  ) {
+    return "job_title";
+  }
+
+  if (
+    lowerMessage.includes("move") ||
+    lowerMessage.includes("relocat") ||
+    lowerMessage.includes("moving")
+  ) {
+    return "planned_location";
+  }
+
+  if (
+    lowerMessage.includes("used to live") ||
+    lowerMessage.includes("lived before")
+  ) {
+    return "past_location";
+  }
+
+  if (lowerMessage.includes("live") || lowerMessage.includes("city")) {
+    return "current_location";
+  }
+
+  if (lowerMessage.includes("become") || lowerMessage.includes("career")) {
+    return "career_plan";
+  }
+
+  if (
+    lowerMessage.includes("like") ||
+    lowerMessage.includes("hobb") ||
+    lowerMessage.includes("enjoy")
+  ) {
+    return "activity_preference";
+  }
+
+  if (lowerMessage.includes("plan") || lowerMessage.includes("want to")) {
+    return "plan";
+  }
+
+  return "general";
 }
 
 export function isIdentityQuestion(userMessage: string): boolean {

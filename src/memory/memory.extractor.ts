@@ -6,6 +6,7 @@ import {
   MemorySchema,
   type ExtractedMemory,
 } from "../domain/memory.js";
+import { AIProviderError, ExtractionError } from "../errors.js";
 
 export type { ExtractedMemory } from "../domain/memory.js";
 
@@ -118,7 +119,34 @@ export async function extractMemories(
       predicate: canonicalizePredicate(memory.predicate),
     }));
   } catch (error: unknown) {
-    console.error("Memory extraction failed:", error);
-    return [];
+    if (
+      error instanceof SyntaxError ||
+      (error instanceof Error &&
+        (error.message.includes("JSON") ||
+          error.message.includes("No JSON object")))
+    ) {
+      console.warn("Memory extraction returned invalid JSON");
+      return [];
+    }
+
+    if (error instanceof Error) {
+      const providerStatus =
+        typeof (error as { status?: unknown }).status === "number"
+          ? (error as unknown as { status: number }).status
+          : undefined;
+      const errorMessage = error.message.toLowerCase();
+
+      if (
+        providerStatus === 429 ||
+        errorMessage.includes("429") ||
+        errorMessage.includes("rate limit")
+      ) {
+        throw new AIProviderError("Memory extraction rate limit exceeded", 429);
+      }
+
+      throw new ExtractionError(`Memory extraction failed: ${error.message}`);
+    }
+
+    throw new ExtractionError("Memory extraction failed unexpectedly");
   }
 }

@@ -10,7 +10,7 @@ Most AI companions forget after a few turns. They contradict themselves. They du
 
 This one doesn't.
 
-It remembers across sessions, retrieves only what's relevant, handles contradictions, and stays in character. It's not a finished product — it's a working prototype that proves the core loop.
+It remembers across sessions, retrieves only what's relevant, handles contradictions, and stays in character. For factual questions, it answers directly from memory when possible. It's not a finished product — it's a working prototype that proves the core loop.
 
 ---
 
@@ -77,6 +77,13 @@ Then talk to Alex in the terminal.
 - Semantic search (keyword matching only)
 - Automatic memory decay (just recency weighting)
 - Multi-user support (out of scope)
+
+## Known Limitations
+
+- **Retrieval:** Keyword-based only. No semantic search.
+- **Decay:** Recency weighting only. No automatic deletion.
+- **Multi-user:** Not supported (out of scope).
+- **Hallucination:** Factual questions are answered from memory. General conversation uses LLM.
 
 ---
 

@@ -1,7 +1,7 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import type { Memory } from "@prisma/client";
 import "dotenv/config";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { chat } from "./chat/chat.service.js";
 import { prisma } from "./db/client.js";
 import {
@@ -389,4 +389,7 @@ async function testDeepMemory(): Promise<void> {
   console.log("\n✅ Deep memory test complete!");
 }
 
-testDeepMemory().catch(console.error);
+testDeepMemory().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

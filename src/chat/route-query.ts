@@ -26,17 +26,25 @@ Return only one option:
 - plan: a future plan or intention they previously shared
 - general: anything else
 
-Distinguish these carefully:
-- "What do I do?" is job_title.
-- "Who am I?" is name.
-- "Where do I live?" is current_location.
-- "Where do I plan to move?" is planned_location.
-- "Where did I used to live?" is past_location.
-- "What do I want to become?" is career_plan.
-- "What do I want to bcome?" is career_plan.
-- "What do I want to do?" is plan.
-- "Where did I travel yesterday?" is general because it is not a stored location question.
-- "What should I do?" is general.
+Rules:
+- "What do I do?" → job_title
+- "Who am I?" → name
+- "Where do I live?" → current_location
+- "Where do I plan to move?" → planned_location
+- "Where did I used to live?" → past_location
+- "What do I want to become?" → career_plan
+- "What do I want to bcome?" → career_plan (typo)
+- "I want to become X" → career_plan (X is a career)
+- "I want to be X" → career_plan (X is a career)
+- "I plan to become X" → career_plan (X is a career)
+- "I plan to move to X" → planned_location (X is a place)
+- "I want to move to X" → planned_location (X is a place)
+- "What do I want to do?" → plan
+- "Where did I travel yesterday?" → general (not a stored location)
+- "What should I do?" → general
+
+**Important:** If the user mentions wanting to "become" or "be" something, it's career_plan.
+If the user mentions wanting to "move" somewhere, it's planned_location.
 
 Return only the option, without punctuation.`;
 
@@ -106,10 +114,7 @@ function routeKnownMemoryQuestion(
     return "current_location";
   }
 
-  if (
-    question === "what is my plan" ||
-    question === "what do i want to do"
-  ) {
+  if (question === "what is my plan" || question === "what do i want to do") {
     return "plan";
   }
 

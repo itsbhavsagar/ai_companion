@@ -42,9 +42,20 @@ const MISSING_MEMORY_ANSWERS: Record<CanonicalPredicate, string> = {
   plan: "I don't know your plan yet.",
 };
 
+const conversationHistory: string[] = [];
+
 export async function chat(userMessage: string): Promise<string> {
+  conversationHistory.push(`User: ${userMessage}`);
+  if (conversationHistory.length > 5) {
+    conversationHistory.shift();
+  }
+  const historyContext = conversationHistory.join("\n");
+
   const intent = await routeQuery(userMessage);
   const targetPredicate = intent === "general" ? undefined : intent;
+
+  await storeExtractedMemories(userMessage);
+
   const memories = await retrieveRelevantMemories(
     userMessage,
     5,
@@ -62,18 +73,18 @@ export async function chat(userMessage: string): Promise<string> {
       ? MEMORY_ANSWERS[targetPredicate](routedMemory.value)
       : targetPredicate && isStandaloneQuestion(userMessage)
         ? MISSING_MEMORY_ANSWERS[targetPredicate]
-      : await generateReply(
-          userMessage,
-          memories
-            .map((memory) => `- ${memory.predicate}: ${memory.value}`)
-            .join("\n"),
-        );
+        : await generateReply(
+            userMessage,
+            memories
+              .map((memory) => `- ${memory.predicate}: ${memory.value}`)
+              .join("\n"),
+            historyContext,
+          );
 
-  if (targetPredicate && isStandaloneQuestion(userMessage)) {
-    return reply;
+  conversationHistory.push(`Alex: ${reply}`);
+  if (conversationHistory.length > 5) {
+    conversationHistory.shift();
   }
-
-  await storeExtractedMemories(userMessage);
 
   return reply;
 }
@@ -81,8 +92,12 @@ export async function chat(userMessage: string): Promise<string> {
 async function generateReply(
   userMessage: string,
   memoryContext: string,
+  historyContext: string,
 ): Promise<string> {
   const systemPrompt = `${getPersona()}
+
+## Conversation History:
+${historyContext || "No previous conversation."}
 
 ## Memory Usage Rules (CRITICAL):
 - Retrieved memories are supporting context, not facts that must be mentioned.
